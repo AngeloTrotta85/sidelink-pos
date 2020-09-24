@@ -31,3 +31,4 @@
 *.out
 *.app
 /Release/
+/static_pos.txt
