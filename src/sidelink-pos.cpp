@@ -55,6 +55,14 @@ private:
 	std::vector <std::string> tokens;
 };
 
+double linear2dBm(double x) {
+	return (10.0 * log10(x * 1000.0));
+}
+
+double getProb_sigmoid(double sinr) {
+	return (1.0 / (1.0 + exp((10.0 - sinr)*0.25)));
+}
+
 int main(int argc, char **argv) {
 	std::list<UAV *> uavsList;
 	std::list<PoI *> poisList;
@@ -111,6 +119,15 @@ int main(int argc, char **argv) {
 	// Randomize PoIs
 	UAV::generateRandomUAVs(uavsList, scenarioSize, nUAV);
 
+	// Calculate Noise Parameters
+	double temperature = 290; // Kelvin
+	double k = 1.3806488 * pow(10.0, -23.0); // Boltzman Constant
+	double bw = 9*1e6; // Efective Bandwidth of channel (9 MHz)
+	double ue_noise_figure = 7 ; // 7 dB noise figure is considered
+	double noise = linear2dBm(k * temperature * bw);
+	double total_noise_dBm = ue_noise_figure + noise;
+	double total_noise = pow(10.0, total_noise_dBm/10.0) / 1000.0;
+
 	stringstream filename;
 	filename << fout.c_str();
 	ofstream f_out(filename.str(), ofstream::out);
@@ -135,14 +152,17 @@ int main(int argc, char **argv) {
 		//Data rate
 		f_out << "DR:" << dtGen << endl;
 
+		//N0
+		f_out << "N0:" << total_noise << endl;
+
 		f_out.close();
 	}
 
 	//TEST
 	Link *ll = new Link();
 	for (int ii = 10; ii < 200; ii++) {
-		double sum_jj = 0;
-		double count_jj = 0;
+		long double sum_jj = 0;
+		long double count_jj = 0;
 		for (int jj = 0; jj < 1000; jj++) {
 			sum_jj = ll->rss(MyCoord::ZERO, MyCoord(0, ii), true);
 			count_jj += 1;
@@ -150,7 +170,10 @@ int main(int argc, char **argv) {
 		double rss_rand = sum_jj / count_jj;
 		double rss_static = ll->rss(MyCoord::ZERO, MyCoord(0, ii), false);
 
-		cout << "Distance " << ii << " rss(" << ii << ") -> static: " << rss_static << "; rand: " << rss_rand << endl;
+		cout << "Distance " << ii
+				<< " rss(" << ii
+					<< ") -> static: " << rss_static <<
+					"; rand: " << rss_rand << "[" << getProb_sigmoid(rss_rand/total_noise) << "]" << endl;
 
 	}
 
