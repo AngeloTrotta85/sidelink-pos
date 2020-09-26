@@ -59,15 +59,32 @@ double linear2dBm(double x) {
 	return (10.0 * log10(x * 1000.0));
 }
 
+double dbm2linear(double x) {
+	return pow(10.0, (x-30.0)/10.0);
+	//return (10.0 * log10(x * 1000.0));
+}
+
 double getProb_sigmoid(double sinr) {
 	return (1.0 / (1.0 + exp((10.0 - sinr)*0.25)));
+}
+
+double getProb_linear(double sinr) {
+	if (sinr <= -5.0) {
+		return 0.0;
+	}
+	else if (sinr >= 25.0) {
+		return 1.0;
+	}
+	else {
+		return ((sinr+5.0)/30.0);
+	}
 }
 
 int main(int argc, char **argv) {
 	std::list<UAV *> uavsList;
 	std::list<PoI *> poisList;
 
-	MyCoord bs_pos = MyCoord::ZERO;
+	//MyCoord bs_pos = MyCoord::ZERO;
 
 	InputParser input(argc, argv);
 
@@ -155,25 +172,55 @@ int main(int argc, char **argv) {
 		//N0
 		f_out << "N0:" << total_noise << endl;
 
+		//K1 and K2
+		f_out << "K1:" << 5 << ";K2:" << 0.0333 << endl;
+
+		//L1 and L2
+		f_out << "L1:" << -5 << ";L2:" << 25 << endl;
+
+		//RSSs
+		Link *ll = new Link();
+		for (auto& u1 : uavsList) {
+			for (auto& u2 : uavsList) {
+				if (u1->id != u2->id) {
+					long double sum_jj = 0;
+					long double count_jj = 0;
+					for (int jj = 0; jj < 2000; jj++) {
+						sum_jj += ll->rss_with_fading(u1->actual_coord,u2->actual_coord);
+						count_jj += 1;
+					}
+					double rss_rand = sum_jj / count_jj;
+
+					f_out << "U:" << (u1->id + 1) << ";U:" << (u2->id + 1) << ";RSS:" << rss_rand << endl;
+				}
+			}
+		}
+
 		f_out.close();
 	}
 
 	//TEST
 	Link *ll = new Link();
-	for (int ii = 10; ii < 200; ii++) {
+	for (int ii = 50; ii <= 5000; ii+=50) {
 		long double sum_jj = 0;
 		long double count_jj = 0;
-		for (int jj = 0; jj < 1000; jj++) {
-			sum_jj = ll->rss(MyCoord::ZERO, MyCoord(0, ii), true);
+		for (int jj = 0; jj < 10000; jj++) {
+			sum_jj += ll->rss_with_fading(MyCoord::ZERO, MyCoord(0, ii));
 			count_jj += 1;
 		}
 		double rss_rand = sum_jj / count_jj;
-		double rss_static = ll->rss(MyCoord::ZERO, MyCoord(0, ii), false);
+		double rss_static = ll->rss(MyCoord::ZERO, MyCoord(0, ii));
 
-		cout << "Distance " << ii
-				<< " rss(" << ii
-					<< ") -> static: " << rss_static <<
-					"; rand: " << rss_rand << "[" << getProb_sigmoid(rss_rand/total_noise) << "]" << endl;
+		double sinr_static = linear2dBm(rss_static/total_noise);
+		double sinr_rand = linear2dBm(rss_rand/total_noise);
+
+		cout << "Dist " << ii
+				//<< "; N0 " << total_noise << "[" << total_noise_dBm << "]"
+				<< "; N0 " << total_noise_dBm
+				<< "; PL " << ll->getUAVChannelLoss(3410,30,30,ii)
+				//<< "; rss(" << ii << ")"
+				<< " -> no-fading: " << rss_static << "[" << linear2dBm(rss_static) << "; S=" << sinr_static << "; P=" << getProb_linear(sinr_static) << "]" <<
+				"; fading: " << rss_rand << "[" << linear2dBm(rss_rand) << "; S=" << sinr_rand << "; P=" << getProb_linear(sinr_rand) << "]" << endl;
 
 	}
 
