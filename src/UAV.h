@@ -22,6 +22,7 @@ public:
 	UAV(MyCoord recCoord);
 
 	static void generateRandomUAVs(std::list<UAV *> &ul, int ss, int nu);
+	static void generateStarUAVs(std::list<UAV *> &ul, std::list<PoI *> &pl, int nu, double dist);
 
 public:
 	MyCoord actual_coord;

@@ -36,3 +36,33 @@ void UAV::generateRandomUAVs(std::list<UAV *> &ul, int ss, int nu) {
 		//std::cout << "UAV: " << i << " --> " << newU->recharge_coord << " - Energy:" << newU->max_energy << std::endl;
 	}
 }
+
+void UAV::generateStarUAVs(std::list<UAV *> &ul, std::list<PoI *> &pl, int nu, double dist) {
+	int leftUAVs = nu;
+	MyCoord dummyBS = MyCoord::ZERO;
+
+	for (auto& poi : pl) {
+		int needed = ceil(dummyBS.distance(poi->actual_coord) / dist);
+		if (needed <= leftUAVs) {
+
+			if (needed > 1) {
+				MyCoord offset = poi->actual_coord / needed;
+				MyCoord nextUAV = offset;
+
+				for (int i = 1; i < needed; i++) {
+					UAV *newU = new UAV(nextUAV);
+					ul.push_back(newU);
+
+					nextUAV = nextUAV + offset;
+				}
+			}
+
+			UAV *newU = new UAV(poi->actual_coord);
+			ul.push_back(newU);
+
+			leftUAVs -= needed;
+		}
+	}
+}
+
+

@@ -88,12 +88,12 @@ int main(int argc, char **argv) {
 
 	InputParser input(argc, argv);
 
-	int scenarioSize = 500;
-	int nUAV = 10;
-	int nPoI = 3;
+	int scenarioSize = 60000;
+	int nUAV = 12;
+	int nPoI = 8;
 	int nChan = 5;
 	double dtGen = 1000;
-	double ddist = 100;
+	double ddist = 15000;
 	string fout = string("static_pos.txt");
 
 	const std::string &seedUser = input.getCmdOption("-seed");
@@ -133,8 +133,9 @@ int main(int argc, char **argv) {
 	// Randomize PoIs
 	PoI::generateRandomPoIs(poisList, scenarioSize, nPoI);
 
-	// Randomize PoIs
-	UAV::generateRandomUAVs(uavsList, scenarioSize, nUAV);
+	// Randomize UAVs
+	//UAV::generateRandomUAVs(uavsList, scenarioSize, nUAV);
+	UAV::generateStarUAVs(uavsList, poisList, nUAV, ddist);
 
 	// Calculate Noise Parameters
 	double temperature = 290; // Kelvin
@@ -201,10 +202,10 @@ int main(int argc, char **argv) {
 
 	//TEST
 	Link *ll = new Link();
-	for (int ii = 50; ii <= 5000; ii+=50) {
+	for (int ii = 1000; ii <= 100000; ii+=1000) {
 		long double sum_jj = 0;
 		long double count_jj = 0;
-		for (int jj = 0; jj < 10000; jj++) {
+		for (int jj = 0; jj < 2000; jj++) {
 			sum_jj += ll->rss_with_fading(MyCoord::ZERO, MyCoord(0, ii));
 			count_jj += 1;
 		}
