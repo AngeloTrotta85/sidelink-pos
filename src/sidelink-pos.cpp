@@ -88,12 +88,15 @@ int main(int argc, char **argv) {
 
 	InputParser input(argc, argv);
 
-	int scenarioSize = 60000;
-	int nUAV = 12;
-	int nPoI = 8;
+	int scenarioSize = 10000;
+	int nUAV = 15;
+	int nPoI = 10;
 	int nChan = 5;
-	double dtGen = 1000;
-	double ddist = 15000;
+	double dtGen = 100;
+	double ddist = 1000;
+	double dmax = 2500;
+	int tend = 2500;
+	int tstop = 2000;
 	string fout = string("static_pos.txt");
 
 	const std::string &seedUser = input.getCmdOption("-seed");
@@ -135,12 +138,13 @@ int main(int argc, char **argv) {
 
 	// Randomize UAVs
 	//UAV::generateRandomUAVs(uavsList, scenarioSize, nUAV);
-	UAV::generateStarUAVs(uavsList, poisList, nUAV, ddist);
+	//UAV::generateStarUAVs(uavsList, poisList, nUAV, ddist);
+	UAV::generateMSTUAVs(uavsList, poisList, nUAV, ddist);
 
 	// Calculate Noise Parameters
 	double temperature = 290; // Kelvin
 	double k = 1.3806488 * pow(10.0, -23.0); // Boltzman Constant
-	double bw = 9*1e6; // Efective Bandwidth of channel (9 MHz)
+	double bw = 9*1e6; // Effective Bandwidth of channel (9 MHz)
 	double ue_noise_figure = 7 ; // 7 dB noise figure is considered
 	double noise = linear2dBm(k * temperature * bw);
 	double total_noise_dBm = ue_noise_figure + noise;
@@ -157,8 +161,16 @@ int main(int argc, char **argv) {
 		}
 
 		//PoIs
+		int poiIDX = 1;
 		for (auto& p : poisList) {
-			f_out << "POI:" << (p->id + 1) << ";x:" << p->actual_coord.x << ";y:" << p->actual_coord.y << ";s:" << p->start << endl;
+			for (auto& u : uavsList) {
+				if ((u->coveringPoi != nullptr) && (u->coveringPoi->id == p->id)) {
+					//f_out << "POI:" << (p->id + 1) << ";U:" << (u->id + 1) << endl;
+					f_out << "POI:" << poiIDX << ";U:" << (u->id + 1) << endl;
+					++poiIDX;
+				}
+			}
+			//f_out << "POI:" << (p->id + 1) << ";x:" << p->actual_coord.x << ";y:" << p->actual_coord.y << ";s:" << p->start << endl;
 		}
 
 		//BS
@@ -174,10 +186,22 @@ int main(int argc, char **argv) {
 		f_out << "N0:" << total_noise << endl;
 
 		//K1 and K2
-		f_out << "K1:" << 5 << ";K2:" << 0.0333 << endl;
+		//f_out << "K1:" << 5 << ";K2:" << 0.0333 << endl;
 
 		//L1 and L2
-		f_out << "L1:" << -5 << ";L2:" << 25 << endl;
+		//f_out << "L1:" << -5 << ";L2:" << 25 << endl;
+
+		//K1 and K2
+		f_out << "K1SNR:" << 5 << ";K2SNR:" << 0.0333 << ";K1SINR:" << 5 << ";K2SINR:" << 0.0333 << endl;
+
+		//L1 and L2
+		f_out << "L1SNR:" << -5 << ";L2SNR:" << 25 << ";L1SINR:" << -5 << ";L2SINR:" << 25 << endl;
+
+		//Tstop e Tend
+		f_out << "TS:" << tstop << ";TE:" << tend << endl;
+
+		//Dmax (U2U) and Dbs(U2G)
+		f_out << "DM:" << dmax << ";DB:" << (1000 + 1) << endl;
 
 		//RSSs
 		Link *ll = new Link();
@@ -202,7 +226,8 @@ int main(int argc, char **argv) {
 
 	//TEST
 	Link *ll = new Link();
-	for (int ii = 1000; ii <= 100000; ii+=1000) {
+	for (int ii = 500; ii <= 50000; ii+=500) {
+	//for (int ii = 2500; ii <= 2500; ii+=500) {
 		long double sum_jj = 0;
 		long double count_jj = 0;
 		for (int jj = 0; jj < 2000; jj++) {
@@ -224,6 +249,51 @@ int main(int argc, char **argv) {
 				"; fading: " << rss_rand << "[" << linear2dBm(rss_rand) << "; S=" << sinr_rand << "; P=" << getProb_linear(sinr_rand) << "]" << endl;
 
 	}
+
+	cout << endl;
+
+	for (int dd = 1000; dd <= 10000; dd+=500) {
+		for (int i = 0; i <= 10; i++) {
+			long double sum_tt = 0;
+			long double count_tt = 0;
+
+			for (int tt = 0; tt < 10000; tt++) {
+				double interference = 0;
+
+				//			long double sum_jj = 0;
+				//			long double count_jj = 0;
+				//			for (int jj = 0; jj < 2000; jj++) {
+				//				sum_jj += ll->rss_with_fading(MyCoord::ZERO, MyCoord(0, ddist));
+				//				count_jj += 1;
+				//			}
+				//			double rss_rand_at_RCV = sum_jj / count_jj;
+
+				double rss_rand_at_RCV = ll->rss_with_fading(MyCoord::ZERO, MyCoord(0, dd));
+
+				for (int j = i; j > 0; j--) {
+					MyCoord poipos = MyCoord::ZERO;
+					//double intrange = ((double) scenarioSize) / 2.0;
+					double intrange = dd*2;
+					poipos.x = RandomGenerator::getInstance().getRealUniform(-intrange, intrange);
+					poipos.y = RandomGenerator::getInstance().getRealUniform(-intrange, intrange);
+
+					interference += ll->rss_with_fading(MyCoord::ZERO, poipos);
+				}
+
+				double sinr_rand = linear2dBm(rss_rand_at_RCV/(interference + total_noise));
+
+				sum_tt += getProb_linear(sinr_rand);
+				//sum_tt += getProb_sigmoid(sinr_rand);
+				count_tt++;
+			}
+
+			cout << "At dist " << dd
+					<< " and " << i << " node interfering, we have rcv probability of: " << (sum_tt / count_tt) << endl;
+		}
+
+		cout << endl;
+	}
+
 
 	cout << "Finish!!!" << endl;
 	return 0;

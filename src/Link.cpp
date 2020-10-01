@@ -22,7 +22,7 @@ double Link::getUAVChannelLoss (double freq, double tx_height, double rx_height,
 	//path_loss = 41.1 + 41.8 * log10(dist);
 
 	//path_loss = (20.0 * log10(dist)) + (20.0 * log10(freq)) - 27.55;	//free space path loss
-	//double alpha = 2.04;
+	//double alpha = 2.05;
 	//path_loss = ((20.0 * log10(1.0)) + (20.0 * log10(freq)) - 27.55) + (10.0 * alpha * log10(dist));	//log distance path loss (free-space at d_0=1)
 
 	/*if (randomness) {
@@ -40,7 +40,7 @@ double Link::rss(MyCoord src, MyCoord dst) {
 
 	double distance = src.distance(dst);
 
-	double UAV_TX_pt_db = 20;
+	double UAV_TX_pt_db = 20; //24;
 	//double UAV_TX_pt_watt = 0.2512;
 	//double GAIN_ag_watt = pow(10.0, 0.6);  //% Transmiter Antenna Gain (6 dB)
 	double GAIN_ag_db = 6;

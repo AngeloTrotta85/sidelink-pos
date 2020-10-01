@@ -23,9 +23,12 @@ public:
 
 	static void generateRandomUAVs(std::list<UAV *> &ul, int ss, int nu);
 	static void generateStarUAVs(std::list<UAV *> &ul, std::list<PoI *> &pl, int nu, double dist);
+	static void generateMSTUAVs(std::list<UAV *> &ul, std::list<PoI *> &pl, int nu, double dist);
 
 public:
 	MyCoord actual_coord;
+
+	PoI *coveringPoi;
 
 	int id;
 	static int idUAVGen;
