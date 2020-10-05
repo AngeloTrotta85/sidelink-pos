@@ -108,6 +108,10 @@ int main(int argc, char **argv) {
 		unsigned seedR = std::chrono::system_clock::now().time_since_epoch().count();
 		RandomGenerator::getInstance().setSeed(seedR);
 	}
+	const std::string &out_string = input.getCmdOption("-fout");
+	if (!out_string.empty()) {
+		fout = out_string;
+	}
 	const std::string &ss_string = input.getCmdOption("-ss");
 	if (!ss_string.empty()) {
 		scenarioSize = atoi(ss_string.c_str());
